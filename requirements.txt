@@ -1,5 +1,7 @@
+oauth2client
 requests
 argparse
 ijson
-traceback
+traceback2
 pp
+tqdm
