@@ -7,7 +7,7 @@ import requests
 import traceback2
 from tqdm import tqdm
 
-import google
+from google import JWTProvider
 
 
 def main(args):
@@ -23,7 +23,7 @@ def main(args):
         auth = args.auth
         sender = send_data_with_auth
     elif args.auth_file is not None:
-        auth = args.auth_file
+        auth = JWTProvider(args.auth_file)
         sender = send_data_with_auth_file
 
     with open(args.json_file) as json_file:
@@ -60,7 +60,7 @@ def send_data_with_auth(url, data_object, session, access_token):
 
 
 def send_data_with_auth_file(url, data_object, session, credentials):
-    access_token = google.get_credentials(credentials).get_access_token()
+    access_token = credentials.get_credentials().get_access_token()
     auth_obj = {'access_token': access_token}
     response = session.patch(url, data=json.dumps(data_object), params=auth_obj)
     if response.status_code != 200:
