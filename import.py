@@ -17,10 +17,14 @@ def main(args):
     parallel_jobs.set_ncpus(args.threads)
     pbar = tqdm(total=564759)
     jobs = []
+    auth = None
+    sender = send_data
     if args.auth is not None:
-        token = args.auth
-    else:
-        token = google.get_access_token(args.auth_file).access_token
+        auth = args.auth
+        sender = send_data_with_auth
+    elif args.auth_file is not None:
+        auth = args.auth_file
+        sender = send_data_with_auth_file
 
     with open(args.json_file) as json_file:
         json_data = json.load(json_file)
@@ -30,7 +34,9 @@ def main(args):
             if args.silent:
                 url += '?print=silent'
             try:
-                jobs.append(parallel_jobs.submit(send_data, (url, value, session, token), (), ("json", "requests")))
+                jobs.append(
+                    parallel_jobs.submit(sender, (url, value, session, auth), (),
+                                         ("json", "requests", "google")))
                 # pbar.update(1)
                 # sendData(url, value, session, args)
             except Exception, e:
@@ -45,12 +51,25 @@ def main(args):
     print("finished at {0}".format(time.time()))
 
 
-def send_data(url, data_object, session, token):
-    if token is not None:
-        auth_obj = {'access_token': token}
-        response = session.patch(url, data=json.dumps(data_object), params=auth_obj)
-    else:
-        response = session.patch(url, data=json.dumps(data_object))
+def send_data_with_auth(url, data_object, session, access_token):
+    auth_obj = {'access_token': access_token}
+    response = session.patch(url, data=json.dumps(data_object), params=auth_obj)
+    if response.status_code != 200:
+        print(response.status_code)
+    response.close()
+
+
+def send_data_with_auth_file(url, data_object, session, credentials):
+    access_token = google.get_credentials(credentials).get_access_token()
+    auth_obj = {'access_token': access_token}
+    response = session.patch(url, data=json.dumps(data_object), params=auth_obj)
+    if response.status_code != 200:
+        print(response.status_code)
+    response.close()
+
+
+def send_data(url, data_object, session):
+    response = session.patch(url, data=json.dumps(data_object))
     if response.status_code != 200:
         print(response.status_code)
     response.close()
